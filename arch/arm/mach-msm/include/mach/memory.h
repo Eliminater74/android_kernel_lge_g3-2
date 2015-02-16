@@ -29,11 +29,10 @@
 #define KEXEC_HB_KERNEL_LOC	UL(0x4800000)
 #endif
 
-/* #if defined(CONFIG_KEXEC_HARDBOOT)
+#if defined(CONFIG_KEXEC_HARDBOOT)
 #define KEXEC_HB_PAGE_ADDR	UL(0xD900000)
 #define KEXEC_HB_KERNEL_LOC	UL(0x3208000)
-#endif*/
->>>>>>> 3ba616c... arch/arm/mach-msm: Kexec: Add config to switch between 2GB and 3GB patch
+#endif
 
 #define MAX_PHYSMEM_BITS 32
 #define SECTION_SIZE_BITS 28
