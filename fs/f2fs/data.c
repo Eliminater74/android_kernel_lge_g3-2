@@ -297,7 +297,7 @@ static int check_extent_cache(struct inode *inode, pgoff_t pgofs,
 		unsigned int blkbits = inode->i_sb->s_blocksize_bits;
 		size_t count;
 
-		clear_buffer_new(bh_result);
+		set_buffer_new(bh_result);
 		map_bh(bh_result, inode->i_sb,
 				start_blkaddr + pgofs - start_fofs);
 		count = end_fofs - pgofs + 1;
@@ -603,6 +603,56 @@ static int __allocate_data_block(struct dnode_of_data *dn)
 	return 0;
 }
 
+static void __allocate_data_blocks(struct inode *inode, loff_t offset,
+							size_t count)
+{
+	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
+	struct dnode_of_data dn;
+	u64 start = F2FS_BYTES_TO_BLK(offset);
+	u64 len = F2FS_BYTES_TO_BLK(count);
+	bool allocated;
+	u64 end_offset;
+
+	while (len) {
+		f2fs_balance_fs(sbi);
+		f2fs_lock_op(sbi);
+
+		/* When reading holes, we need its node page */
+		set_new_dnode(&dn, inode, NULL, NULL, 0);
+		if (get_dnode_of_data(&dn, start, ALLOC_NODE))
+			goto out;
+
+		allocated = false;
+		end_offset = ADDRS_PER_PAGE(dn.node_page, F2FS_I(inode));
+
+		while (dn.ofs_in_node < end_offset && len) {
+			if (dn.data_blkaddr == NULL_ADDR) {
+				if (__allocate_data_block(&dn))
+					goto sync_out;
+				allocated = true;
+			}
+			len--;
+			start++;
+			dn.ofs_in_node++;
+		}
+
+		if (allocated)
+			sync_inode_page(&dn);
+
+		f2fs_put_dnode(&dn);
+		f2fs_unlock_op(sbi);
+	}
+	return;
+
+sync_out:
+	if (allocated)
+		sync_inode_page(&dn);
+	f2fs_put_dnode(&dn);
+out:
+	f2fs_unlock_op(sbi);
+	return;
+}
+
 /*
  * get_data_block() now supported readahead/bmap/rw direct_IO with mapped bh.
  * If original data blocks are allocated, then give them to blockdev.
@@ -629,10 +679,15 @@ static int __get_data_block(struct inode *inode, sector_t iblock,
 	if (check_extent_cache(inode, pgofs, bh_result))
 		goto out;
 
+<<<<<<< HEAD
 	if (create) {
 		f2fs_balance_fs(sbi);
 		f2fs_lock_op(sbi);
 	}
+=======
+	if (create)
+		f2fs_lock_op(F2FS_I_SB(inode));
+>>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 
 	/* When reading holes, we need its node page */
 	set_new_dnode(&dn, inode, NULL, NULL, 0);
@@ -646,12 +701,14 @@ static int __get_data_block(struct inode *inode, sector_t iblock,
 		goto put_out;
 
 	if (dn.data_blkaddr != NULL_ADDR) {
+		set_buffer_new(bh_result);
 		map_bh(bh_result, inode->i_sb, dn.data_blkaddr);
 	} else if (create) {
 		err = __allocate_data_block(&dn);
 		if (err)
 			goto put_out;
 		allocated = true;
+		set_buffer_new(bh_result);
 		map_bh(bh_result, inode->i_sb, dn.data_blkaddr);
 	} else {
 		goto put_out;
@@ -831,7 +888,7 @@ static int f2fs_write_data_page(struct page *page,
 
 	zero_user_segment(page, offset, PAGE_CACHE_SIZE);
 write:
-	if (unlikely(sbi->por_doing))
+	if (unlikely(is_sbi_flag_set(sbi, SBI_POR_DOING)))
 		goto redirty_out;
 
 	/* Dentry blocks are controlled by checkpoint */
@@ -1098,6 +1155,9 @@ static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
 	/* clear fsync mark to recover these blocks */
 	fsync_mark_clear(F2FS_SB(inode->i_sb), inode->i_ino);
 
+	if (rw & WRITE)
+		__allocate_data_blocks(inode, offset, count);
+
 	err = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
 							get_data_block);
 
@@ -1111,16 +1171,36 @@ static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
 	return err;
 }
 
-static void f2fs_invalidate_data_page(struct page *page, unsigned long offset)
+void f2fs_invalidate_page(struct page *page, unsigned long offset)
 {
 	struct inode *inode = page->mapping->host;
+<<<<<<< HEAD
 	if (PageDirty(page))
 		inode_dec_dirty_dents(inode);
+=======
+	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
+
+	if (inode->i_ino >= F2FS_ROOT_INO(sbi) && (offset % PAGE_CACHE_SIZE))
+		return;
+
+	if (PageDirty(page)) {
+		if (inode->i_ino == F2FS_META_INO(sbi))
+			dec_page_count(sbi, F2FS_DIRTY_META);
+		else if (inode->i_ino == F2FS_NODE_INO(sbi))
+			dec_page_count(sbi, F2FS_DIRTY_NODES);
+		else
+			inode_dec_dirty_pages(inode);
+	}
+>>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 	ClearPagePrivate(page);
 }
 
-static int f2fs_release_data_page(struct page *page, gfp_t wait)
+int f2fs_release_page(struct page *page, gfp_t wait)
 {
+	/* If this is dirty page, keep PagePrivate */
+	if (PageDirty(page))
+		return 0;
+
 	ClearPagePrivate(page);
 	return 1;
 }
@@ -1161,8 +1241,8 @@ const struct address_space_operations f2fs_dblock_aops = {
 	.write_begin	= f2fs_write_begin,
 	.write_end	= f2fs_write_end,
 	.set_page_dirty	= f2fs_set_data_page_dirty,
-	.invalidatepage	= f2fs_invalidate_data_page,
-	.releasepage	= f2fs_release_data_page,
+	.invalidatepage	= f2fs_invalidate_page,
+	.releasepage	= f2fs_release_page,
 	.direct_IO	= f2fs_direct_IO,
 	.bmap		= f2fs_bmap,
 };

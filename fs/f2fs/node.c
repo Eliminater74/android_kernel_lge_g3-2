@@ -413,7 +413,7 @@ int get_dnode_of_data(struct dnode_of_data *dn, pgoff_t index, int mode)
 {
 	struct f2fs_sb_info *sbi = F2FS_SB(dn->inode->i_sb);
 	struct page *npage[4];
-	struct page *parent;
+	struct page *parent = NULL;
 	int offset[4];
 	unsigned int noffset[4];
 	nid_t nids[4];
@@ -430,6 +430,14 @@ int get_dnode_of_data(struct dnode_of_data *dn, pgoff_t index, int mode)
 		if (IS_ERR(npage[0]))
 			return PTR_ERR(npage[0]);
 	}
+
+	/* if inline_data is set, should not report any block indices */
+	if (f2fs_has_inline_data(dn->inode) && index) {
+		err = -EINVAL;
+		f2fs_put_page(npage[0], 1);
+		goto release_out;
+	}
+
 	parent = npage[0];
 	if (level != 0)
 		nids[1] = get_nid(parent, offset[0], true);
@@ -527,7 +535,7 @@ static void truncate_node(struct dnode_of_data *dn)
 	}
 invalidate:
 	clear_node_page_dirty(dn->node_page);
-	F2FS_SET_SB_DIRT(sbi);
+	set_sbi_flag(sbi, SBI_IS_DIRTY);
 
 	f2fs_put_page(dn->node_page, 1);
 
@@ -972,11 +980,11 @@ repeat:
 	err = read_node_page(page, READ_SYNC);
 	if (err < 0)
 		return ERR_PTR(err);
-	else if (err == LOCKED_PAGE)
-		goto got_it;
+	else if (err != LOCKED_PAGE)
+		lock_page(page);
 
-	lock_page(page);
 	if (unlikely(!PageUptodate(page) || nid != nid_of_node(page))) {
+		ClearPageUptodate(page);
 		f2fs_put_page(page, 1);
 		return ERR_PTR(-EIO);
 	}
@@ -984,7 +992,11 @@ repeat:
 		f2fs_put_page(page, 1);
 		goto repeat;
 	}
+<<<<<<< HEAD
 got_it:
+=======
+	mark_page_accessed(page);
+>>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 	return page;
 }
 
@@ -1217,7 +1229,7 @@ static int f2fs_write_node_page(struct page *page,
 
 	trace_f2fs_writepage(page, NODE);
 
-	if (unlikely(sbi->por_doing))
+	if (unlikely(is_sbi_flag_set(sbi, SBI_POR_DOING)))
 		goto redirty_out;
 	if (unlikely(f2fs_cp_error(sbi)))
 		goto redirty_out;
@@ -1297,6 +1309,7 @@ static int f2fs_set_node_page_dirty(struct page *page)
 	return 0;
 }
 
+<<<<<<< HEAD
 static void f2fs_invalidate_node_page(struct page *page, unsigned long offset)
 {
 	struct inode *inode = page->mapping->host;
@@ -1312,6 +1325,8 @@ static int f2fs_release_node_page(struct page *page, gfp_t wait)
 	return 1;
 }
 
+=======
+>>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 /*
  * Structure of the f2fs node operations
  */
@@ -1319,8 +1334,8 @@ const struct address_space_operations f2fs_node_aops = {
 	.writepage	= f2fs_write_node_page,
 	.writepages	= f2fs_write_node_pages,
 	.set_page_dirty	= f2fs_set_node_page_dirty,
-	.invalidatepage	= f2fs_invalidate_node_page,
-	.releasepage	= f2fs_release_node_page,
+	.invalidatepage	= f2fs_invalidate_page,
+	.releasepage	= f2fs_release_page,
 };
 
 static struct free_nid *__lookup_free_nid_list(struct f2fs_nm_info *nm_i,

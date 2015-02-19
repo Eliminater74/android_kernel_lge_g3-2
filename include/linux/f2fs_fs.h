@@ -18,11 +18,15 @@
 #define F2FS_LOG_SECTOR_SIZE		9	/* 9 bits for 512 byte */
 #define F2FS_LOG_SECTORS_PER_BLOCK	3	/* 4KB: F2FS_BLKSIZE */
 #define F2FS_BLKSIZE			4096	/* support only 4KB block */
+#define F2FS_BLKSIZE_BITS		12	/* bits for F2FS_BLKSIZE */
 #define F2FS_MAX_EXTENSION		64	/* # of extension entries */
 #define F2FS_BLK_ALIGN(x)	(((x) + F2FS_BLKSIZE - 1) / F2FS_BLKSIZE)
 
 #define NULL_ADDR		((block_t)0)	/* used as block_t addresses */
 #define NEW_ADDR		((block_t)-1)	/* used as block_t addresses */
+
+#define F2FS_BYTES_TO_BLK(bytes)	((bytes) >> F2FS_BLKSIZE_BITS)
+#define F2FS_BLK_TO_BYTES(blk)		((blk) << F2FS_BLKSIZE_BITS)
 
 /* 0, 1(node nid), 2(meta nid) are reserved node id */
 #define F2FS_RESERVED_NODE_NUM		3
@@ -85,6 +89,11 @@ struct f2fs_super_block {
 /*
  * For checkpoint
  */
+<<<<<<< HEAD
+=======
+#define CP_FASTBOOT_FLAG	0x00000020
+#define CP_FSCK_FLAG		0x00000010
+>>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 #define CP_ERROR_FLAG		0x00000008
 #define CP_COMPACT_SUM_FLAG	0x00000004
 #define CP_ORPHAN_PRESENT_FLAG	0x00000002
