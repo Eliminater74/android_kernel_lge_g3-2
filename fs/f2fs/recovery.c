@@ -306,6 +306,10 @@ static int do_recover_data(struct f2fs_sb_info *sbi, struct inode *inode,
 	if (IS_INODE(page)) {
 		recover_inline_xattr(inode, page);
 	} else if (f2fs_has_xattr_block(ofs_of_node(page))) {
+		/*
+		 * Deprecated; xattr blocks should be found from cold log.
+		 * But, we should remain this for backward compatibility.
+		 */
 		recover_xattr_data(inode, page, blkaddr);
 		goto out;
 	}
@@ -453,7 +457,17 @@ int recover_fsync_data(struct f2fs_sb_info *sbi)
 	INIT_LIST_HEAD(&inode_list);
 
 	/* step #1: find fsynced inode numbers */
+<<<<<<< HEAD
 	sbi->por_doing = true;
+=======
+	set_sbi_flag(sbi, SBI_POR_DOING);
+
+	/* prevent checkpoint */
+	mutex_lock(&sbi->cp_mutex);
+
+	blkaddr = NEXT_FREE_BLKADDR(sbi, curseg);
+
+>>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 	err = find_fsync_dnodes(sbi, &inode_list);
 	if (err)
 		goto out;
@@ -470,8 +484,39 @@ int recover_fsync_data(struct f2fs_sb_info *sbi)
 out:
 	destroy_fsync_dnodes(&inode_list);
 	kmem_cache_destroy(fsync_entry_slab);
+<<<<<<< HEAD
 	sbi->por_doing = false;
 	if (!err && need_writecp)
 		write_checkpoint(sbi, false);
+=======
+
+	/* truncate meta pages to be used by the recovery */
+	truncate_inode_pages_range(META_MAPPING(sbi),
+			MAIN_BLKADDR(sbi) << PAGE_CACHE_SHIFT, -1);
+
+	if (err) {
+		truncate_inode_pages(NODE_MAPPING(sbi), 0);
+		truncate_inode_pages(META_MAPPING(sbi), 0);
+	}
+
+	clear_sbi_flag(sbi, SBI_POR_DOING);
+	if (err) {
+		discard_next_dnode(sbi, blkaddr);
+
+		/* Flush all the NAT/SIT pages */
+		while (get_pages(sbi, F2FS_DIRTY_META))
+			sync_meta_pages(sbi, META, LONG_MAX);
+		set_ckpt_flags(sbi->ckpt, CP_ERROR_FLAG);
+		mutex_unlock(&sbi->cp_mutex);
+	} else if (need_writecp) {
+		struct cp_control cpc = {
+			.reason = CP_SYNC,
+		};
+		mutex_unlock(&sbi->cp_mutex);
+		write_checkpoint(sbi, &cpc);
+	} else {
+		mutex_unlock(&sbi->cp_mutex);
+	}
+>>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 	return err;
 }
