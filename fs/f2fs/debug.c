@@ -39,11 +39,6 @@ static void update_general_status(struct f2fs_sb_info *sbi)
 	si->ndirty_dent = get_pages(sbi, F2FS_DIRTY_DENTS);
 	si->ndirty_dirs = sbi->n_dirty_dirs;
 	si->ndirty_meta = get_pages(sbi, F2FS_DIRTY_META);
-<<<<<<< HEAD
-=======
-	si->inmem_pages = get_pages(sbi, F2FS_INMEM_PAGES);
-	si->wb_pages = get_pages(sbi, F2FS_WRITEBACK);
->>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 	si->total_count = (int)sbi->user_block_count / sbi->blocks_per_seg;
 	si->rsvd_segs = reserved_segments(sbi);
 	si->overp_segs = overprovision_segments(sbi);
@@ -136,16 +131,9 @@ static void update_mem_info(struct f2fs_sb_info *sbi)
 
 	/* build sit */
 	si->base_mem += sizeof(struct sit_info);
-<<<<<<< HEAD
 	si->base_mem += TOTAL_SEGS(sbi) * sizeof(struct seg_entry);
 	si->base_mem += f2fs_bitmap_size(TOTAL_SEGS(sbi));
 	si->base_mem += 2 * SIT_VBLOCK_MAP_SIZE * TOTAL_SEGS(sbi);
-=======
-	si->base_mem += MAIN_SEGS(sbi) * sizeof(struct seg_entry);
-	si->base_mem += f2fs_bitmap_size(MAIN_SEGS(sbi));
-	si->base_mem += 2 * SIT_VBLOCK_MAP_SIZE * MAIN_SEGS(sbi);
-	si->base_mem += SIT_VBLOCK_MAP_SIZE;
->>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 	if (sbi->segs_per_sec > 1)
 		si->base_mem += TOTAL_SECS(sbi) * sizeof(struct sec_entry);
 	si->base_mem += __bitmap_size(sbi, SIT_BITMAP);
@@ -256,11 +244,6 @@ static int stat_show(struct seq_file *s, void *v)
 		seq_printf(s, "\nExtent Hit Ratio: %d / %d\n",
 			   si->hit_ext, si->total_ext);
 		seq_puts(s, "\nBalancing F2FS Async:\n");
-<<<<<<< HEAD
-=======
-		seq_printf(s, "  - inmem: %4d, wb: %4d\n",
-			   si->inmem_pages, si->wb_pages);
->>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 		seq_printf(s, "  - nodes: %4d in %4d\n",
 			   si->ndirty_node, si->node_pages);
 		seq_printf(s, "  - dents: %4d in dirs:%4d\n",

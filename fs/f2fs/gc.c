@@ -46,7 +46,7 @@ static int gc_thread_func(void *data)
 			break;
 
 		if (sbi->sb->s_frozen >= SB_FREEZE_WRITE) {
-			increase_sleep_time(gc_th, &wait_ms);
+			wait_ms = increase_sleep_time(gc_th, wait_ms);
 			continue;
 		}
 
@@ -67,15 +67,15 @@ static int gc_thread_func(void *data)
 			continue;
 
 		if (!is_idle(sbi)) {
-			increase_sleep_time(gc_th, &wait_ms);
+			wait_ms = increase_sleep_time(gc_th, wait_ms);
 			mutex_unlock(&sbi->gc_mutex);
 			continue;
 		}
 
 		if (has_enough_invalid_blocks(sbi))
-			decrease_sleep_time(gc_th, &wait_ms);
+			wait_ms = decrease_sleep_time(gc_th, wait_ms);
 		else
-			increase_sleep_time(gc_th, &wait_ms);
+			wait_ms = increase_sleep_time(gc_th, wait_ms);
 
 		stat_inc_bggc_count(sbi);
 
@@ -362,13 +362,7 @@ static void add_gc_inode(struct inode *inode, struct list_head *ilist)
 
 	new_ie = f2fs_kmem_cache_alloc(winode_slab, GFP_NOFS);
 	new_ie->inode = inode;
-<<<<<<< HEAD
 	list_add_tail(&new_ie->list, ilist);
-=======
-
-	f2fs_radix_tree_insert(&gc_list->iroot, inode->i_ino, new_ie);
-	list_add_tail(&new_ie->list, &gc_list->ilist);
->>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 }
 
 static void put_gc_inode(struct list_head *ilist)
@@ -694,18 +688,8 @@ int f2fs_gc(struct f2fs_sb_info *sbi)
 	int gc_type = BG_GC;
 	int nfree = 0;
 	int ret = -1;
-<<<<<<< HEAD
 
 	INIT_LIST_HEAD(&ilist);
-=======
-	struct cp_control cpc;
-	struct gc_inode_list gc_list = {
-		.ilist = LIST_HEAD_INIT(gc_list.ilist),
-		.iroot = RADIX_TREE_INIT(GFP_NOFS),
-	};
-
-	cpc.reason = __get_cp_reason(sbi);
->>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 gc_more:
 	if (unlikely(!(sbi->sb->s_flags & MS_ACTIVE)))
 		goto stop;

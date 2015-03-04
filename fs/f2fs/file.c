@@ -332,7 +332,7 @@ static loff_t f2fs_seek_block(struct file *file, loff_t offset, int whence)
 		/* find data/hole in dnode block */
 		for (; dn.ofs_in_node < end_offset;
 				dn.ofs_in_node++, pgofs++,
-				data_ofs = (loff_t)pgofs << PAGE_CACHE_SHIFT) {
+				data_ofs = pgofs << PAGE_CACHE_SHIFT) {
 			block_t blkaddr;
 			blkaddr = datablock_addr(dn.node_page, dn.ofs_in_node);
 
@@ -456,15 +456,11 @@ int truncate_blocks(struct inode *inode, u64 from, bool lock)
 
 	trace_f2fs_truncate_blocks_enter(inode, from);
 
-<<<<<<< HEAD
 	if (f2fs_has_inline_data(inode))
 		goto done;
 
 	free_from = (pgoff_t)
 			((from + blocksize - 1) >> (sbi->log_blocksize));
-=======
-	free_from = (pgoff_t)F2FS_BYTES_TO_BLK(from + blocksize - 1);
->>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 
 	if (lock)
 		f2fs_lock_op(sbi);
@@ -820,83 +816,6 @@ long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			ret = -EACCES;
 			goto out;
 		}
-<<<<<<< HEAD
-=======
-	}
-
-	flags = flags & FS_FL_USER_MODIFIABLE;
-	flags |= oldflags & ~FS_FL_USER_MODIFIABLE;
-	fi->i_flags = flags;
-	mutex_unlock(&inode->i_mutex);
-
-	f2fs_set_inode_flags(inode);
-	inode->i_ctime = CURRENT_TIME;
-	mark_inode_dirty(inode);
-out:
-	mnt_drop_write_file(filp);
-	return ret;
-}
-
-static int f2fs_ioc_getversion(struct file *filp, unsigned long arg)
-{
-	struct inode *inode = file_inode(filp);
-
-	return put_user(inode->i_generation, (int __user *)arg);
-}
-
-static int f2fs_ioc_start_atomic_write(struct file *filp)
-{
-	struct inode *inode = file_inode(filp);
-
-	if (!inode_owner_or_capable(inode))
-		return -EACCES;
-
-	f2fs_balance_fs(F2FS_I_SB(inode));
-
-	if (f2fs_is_atomic_file(inode))
-		return 0;
-
-	set_inode_flag(F2FS_I(inode), FI_ATOMIC_FILE);
-
-	return f2fs_convert_inline_inode(inode);
-}
-
-static int f2fs_ioc_commit_atomic_write(struct file *filp)
-{
-	struct inode *inode = file_inode(filp);
-	int ret;
-
-	if (!inode_owner_or_capable(inode))
-		return -EACCES;
-
-	if (f2fs_is_volatile_file(inode))
-		return 0;
-
-	ret = mnt_want_write_file(filp);
-	if (ret)
-		return ret;
-
-	if (f2fs_is_atomic_file(inode))
-		commit_inmem_pages(inode, false);
-
-	ret = f2fs_sync_file(filp, 0, LONG_MAX, 0);
-	mnt_drop_write_file(filp);
-	clear_inode_flag(F2FS_I(inode), FI_ATOMIC_FILE);
-	return ret;
-}
-
-static int f2fs_ioc_start_volatile_write(struct file *filp)
-{
-	struct inode *inode = file_inode(filp);
-
-	if (!inode_owner_or_capable(inode))
-		return -EACCES;
-
-	if (f2fs_is_volatile_file(inode))
-		return 0;
-
-	set_inode_flag(F2FS_I(inode), FI_VOLATILE_FILE);
->>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 
 		if (get_user(flags, (int __user *) arg)) {
 			ret = -EFAULT;
@@ -928,40 +847,7 @@ static int f2fs_ioc_start_volatile_write(struct file *filp)
 out:
 		mnt_drop_write_file(filp);
 		return ret;
-<<<<<<< HEAD
 	}
-=======
-
-	if (copy_to_user((struct fstrim_range __user *)arg, &range,
-				sizeof(range)))
-		return -EFAULT;
-	return 0;
-}
-
-long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
-{
-	switch (cmd) {
-	case F2FS_IOC_GETFLAGS:
-		return f2fs_ioc_getflags(filp, arg);
-	case F2FS_IOC_SETFLAGS:
-		return f2fs_ioc_setflags(filp, arg);
-	case F2FS_IOC_GETVERSION:
-		return f2fs_ioc_getversion(filp, arg);
-	case F2FS_IOC_START_ATOMIC_WRITE:
-		return f2fs_ioc_start_atomic_write(filp);
-	case F2FS_IOC_COMMIT_ATOMIC_WRITE:
-		return f2fs_ioc_commit_atomic_write(filp);
-	case F2FS_IOC_START_VOLATILE_WRITE:
-		return f2fs_ioc_start_volatile_write(filp);
-	case F2FS_IOC_RELEASE_VOLATILE_WRITE:
-		return f2fs_ioc_release_volatile_write(filp);
-	case F2FS_IOC_ABORT_VOLATILE_WRITE:
-		return f2fs_ioc_abort_volatile_write(filp);
-	case FS_IOC_SHUTDOWN:
-		return f2fs_ioc_shutdown(filp, arg);
-	case FITRIM:
-		return f2fs_ioc_fitrim(filp, arg);
->>>>>>> ed9967a... f2fs: update from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs.git
 	default:
 		return -ENOTTY;
 	}
