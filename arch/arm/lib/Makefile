@@ -32,6 +32,7 @@ else
   mmu-y	+= uaccess.o
 endif
 endif
+endif
 
 # using lib_ here won't override already available weak symbols
 obj-$(CONFIG_UACCESS_WITH_MEMCPY) += uaccess_with_memcpy.o
